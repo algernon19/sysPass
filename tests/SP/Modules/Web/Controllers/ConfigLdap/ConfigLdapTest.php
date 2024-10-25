@@ -190,6 +190,62 @@ class ConfigLdapTest extends IntegrationTestCase
     }
 
     /**
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
+     * @throws Exception
+     */
+    #[Test]
+    #[BodyChecker('outputCheckerImport')]
+    public function import()
+    {
+        $results = array_map(
+            fn() => [
+                'count' => 5,
+                'dn' => self::$faker->userName(),
+                'mail' => [self::$faker->email(), self::$faker->email()],
+                'login' => self::$faker->colorName(),
+                'username' => self::$faker->userName(),
+                'member' => self::$faker->userName(),
+                'memberUid' => self::$faker->uuid(),
+                'uniqueMember' => self::$faker->uuid()
+            ],
+            range(0, 4)
+        );
+
+        $iterator = new ArrayIterator($results);
+
+        $ldap = self::createStub(Ldap::class);
+        $ldap->method('search')
+             ->willReturn($iterator);
+
+        $data = [
+            'ldap_server' => self::$faker->domainName(),
+            'ldap_server_type' => 1,
+            'ldap_binduser' => self::$faker->userName(),
+            'ldap_bindpass' => self::$faker->password(),
+            'ldap_base' => 'dc=test',
+            'ldap_group' => 'cn=group,dc=test',
+            'ldap_tls_enabled' => self::$faker->boolean(),
+            'ldap_import_groups' => true,
+            'ldap_import_filter' => 'a_filter',
+            'ldap_defaultgroup' => 100,
+            'ldap_defaultprofile' => 200,
+            'ldap_login_attribute' => 'login',
+            'ldap_username_attribute' => 'username',
+            'ldap_groupname_attribute' => 'dn',
+        ];
+
+        $container = $this->buildContainer(
+            IntegrationTestCase::buildRequest('post', 'index.php', ['r' => 'configLdap/import'], $data),
+            [
+                Ldap::class => $ldap
+            ]
+        );
+
+        IntegrationTestCase::runApp($container);
+    }
+
+    /**
      * @param string $output
      * @return void
      */
@@ -252,5 +308,18 @@ class ConfigLdapTest extends IntegrationTestCase
         self::assertEquals(['LDAP connection OK', 'Objects found: 5'], $json->description);
         self::assertCount(5, $json->data->items[0]->items);
         self::assertNotEmpty($json->data->items[0]->items[0]);
+    }
+
+    /**
+     * @param string $output
+     * @return void
+     */
+    private function outputCheckerImport(string $output): void
+    {
+        $json = json_decode($output);
+
+        self::assertEquals('OK', $json->status);
+        self::assertEquals('LDAP users import finished', $json->description);
+        self::assertEquals(['Imported users: 5 / 5', 'Errors: 0'], $json->data);
     }
 }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 /**
  * sysPass
@@ -55,10 +56,10 @@ use function SP\processException;
 final class LdapImport extends Service implements LdapImportService
 {
     public function __construct(
-        Application                              $application,
-        private readonly UserService $userService,
-        private readonly UserGroupService        $userGroupService,
-        private readonly LdapActionsService      $ldapActionsService,
+        Application                         $application,
+        private readonly UserService        $userService,
+        private readonly UserGroupService   $userGroupService,
+        private readonly LdapActionsService $ldapActionsService,
         private readonly LdapConnectionHandler $ldapConnection
     ) {
         parent::__construct($application);
@@ -85,7 +86,7 @@ final class LdapImport extends Service implements LdapImportService
         while ($iterator->valid()) {
             $entry = $iterator->current();
             $userGroup = [
-                'name' => $entry[$ldapImportParams->getUserGroupNameAttribute()][0] ?? null,
+                'name' => $this->flattenEntry($entry[$ldapImportParams->getUserGroupNameAttribute()]) ?? null,
                 'description' => __('Imported from LDAP')
             ];
 
@@ -152,6 +153,15 @@ final class LdapImport extends Service implements LdapImportService
         );
     }
 
+    private function flattenEntry(array|string|null $entry): ?string
+    {
+        if (is_array($entry)) {
+            return array_pop($entry);
+        }
+
+        return $entry;
+    }
+
     /**
      * @throws LdapException
      */
@@ -172,9 +182,9 @@ final class LdapImport extends Service implements LdapImportService
             $entry = $iterator->current();
 
             $user = [
-                'name' => $entry[$ldapImportParams->getUserNameAttribute()][0] ?? null,
-                'login' => $entry[$ldapImportParams->getLoginAttribute()][0] ?? null,
-                'email' => $entry['mail'][0] ?? null,
+                'name' => $this->flattenEntry($entry[$ldapImportParams->getUserNameAttribute()]) ?? null,
+                'login' => $this->flattenEntry($entry[$ldapImportParams->getLoginAttribute()]) ?? null,
+                'email' => $this->flattenEntry($entry['mail']) ?? null,
                 'notes' => __('Imported from LDAP'),
                 'userGroupId' => $ldapImportParams->getDefaultUserGroup(),
                 'userProfileId' => $ldapImportParams->getDefaultUserProfile(),
