@@ -59,7 +59,7 @@ final class CheckController extends SimpleControllerBase
      * @throws SPException
      */
     #[Action(ResponseType::JSON)]
-    public function checkAction(bool $useConfigParams): ActionResponse
+    public function checkAction(bool $useConfigParams = true): ActionResponse
     {
         if ($useConfigParams) {
             $ldapParams = LdapParams::fromConfig($this->configData);

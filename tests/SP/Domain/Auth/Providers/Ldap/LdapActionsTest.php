@@ -26,7 +26,7 @@ declare(strict_types=1);
 
 namespace SP\Tests\Domain\Auth\Providers\Ldap;
 
-use Laminas\Ldap\Collection;
+use ArrayIterator;
 use Laminas\Ldap\Ldap;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\MockObject\Exception;
@@ -61,8 +61,7 @@ class LdapActionsTest extends UnitaryTestCase
     public function testGetObjects(): void
     {
         $filter = 'test';
-        $collection = $this->createStub(Collection::class);
-        $collection->method('count')->willReturn(10);
+        $iterator = new ArrayIterator(range(0, 9));
 
         $attributes = array_map(fn() => self::$faker->colorName, range(0, 9));
         $searchBase = self::$faker->colorName;
@@ -75,11 +74,11 @@ class LdapActionsTest extends UnitaryTestCase
                        Ldap::SEARCH_SCOPE_SUB,
                        $attributes,
                    )
-                   ->willReturn($collection);
+            ->willReturn($iterator);
 
         $out = $this->ldapActions->getObjects($filter, $attributes, $searchBase);
 
-        self::assertEquals(new LdapResults(10, $collection), $out);
+        self::assertEquals(new LdapResults($iterator), $out);
     }
 
     /**
@@ -120,8 +119,8 @@ class LdapActionsTest extends UnitaryTestCase
      */
     public function testGetAttributes(): void
     {
-        $collection = $this->createMock(Collection::class);
         $attributes = $this->buildAttributes();
+        $iterator = new ArrayIterator([$attributes]);
 
         $this->ldap->expects(self::once())
                    ->method('search')
@@ -131,9 +130,7 @@ class LdapActionsTest extends UnitaryTestCase
                        Ldap::SEARCH_SCOPE_SUB,
                        [],
                    )
-                   ->willReturn($collection);
-
-        $collection->expects(self::once())->method('getFirst')->willReturn($attributes);
+            ->willReturn($iterator);
 
         $out = $this->ldapActions->getAttributes('a_filter');
 
@@ -191,8 +188,14 @@ class LdapActionsTest extends UnitaryTestCase
      */
     public function testSearchGroupsDn(): void
     {
+        $expected = [
+            [],
+            [
+                'dn' => self::$faker->name,
+            ],
+        ];
         $filter = 'test';
-        $collection = $this->createMock(Collection::class);
+        $iterator = new ArrayIterator($expected);
 
         $this->ldap->expects(self::once())
                    ->method('search')
@@ -202,17 +205,7 @@ class LdapActionsTest extends UnitaryTestCase
                        Ldap::SEARCH_SCOPE_SUB,
                        ['dn'],
                    )
-                   ->willReturn($collection);
-
-        $collection->expects(self::once())->method('count')->willReturn(1);
-
-        $expected = [
-            [],
-            [
-                'dn' => self::$faker->name,
-            ],
-        ];
-        $collection->expects(self::once())->method('toArray')->willReturn($expected);
+            ->willReturn($iterator);
 
         $out = $this->ldapActions->searchGroupsDn($filter);
 
@@ -226,7 +219,7 @@ class LdapActionsTest extends UnitaryTestCase
     public function testSearchGroupsDnNoGroups(): void
     {
         $filter = 'test';
-        $collection = $this->createMock(Collection::class);
+        $iterator = new ArrayIterator();
 
         $this->ldap->expects(self::once())
                    ->method('search')
@@ -236,13 +229,11 @@ class LdapActionsTest extends UnitaryTestCase
                        Ldap::SEARCH_SCOPE_SUB,
                        ['dn'],
                    )
-                   ->willReturn($collection);
+            ->willReturn($iterator);
 
         $this->eventDispatcher->expects(self::once())
                               ->method('notify')
                               ->with('ldap.search.group');
-
-        $collection->expects(self::once())->method('count')->willReturn(0);
 
         $this->expectException(LdapException::class);
         $this->expectExceptionMessage('Error while searching the group RDN');

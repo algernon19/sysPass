@@ -26,7 +26,7 @@ declare(strict_types=1);
 
 namespace SP\Domain\Auth\Providers\Ldap;
 
-use Laminas\Ldap\Collection;
+use Iterator;
 use Laminas\Ldap\Exception\LdapException as LaminasLdapException;
 use Laminas\Ldap\Ldap as LaminasLdap;
 use SP\Core\Events\Event;
@@ -106,7 +106,7 @@ final class LdapActions implements LdapActionsService
 
         $searchResults = $this->getResults($filter, ['dn']);
 
-        if ($searchResults->count() === 0) {
+        if (iterator_count($searchResults) === 0) {
             $this->eventDispatcher->notify(
                 'ldap.search.group',
                 new Event(
@@ -135,7 +135,7 @@ final class LdapActions implements LdapActionsService
 
                         return null;
                     },
-                    $searchResults->toArray()
+                    iterator_to_array($searchResults)
                 )
             )
         );
@@ -159,16 +159,14 @@ final class LdapActions implements LdapActionsService
      *
      * @param string $filter Filtro a utilizar
      * @param array|null $attributes Atributos a devolver
-     * @param string|null $searchBase
      *
-     * @return Collection
      * @throws LdapException
      */
     private function getResults(
         string $filter,
         ?array $attributes = [],
         ?string $searchBase = null
-    ): Collection {
+    ): Iterator {
         if (empty($searchBase)) {
             $searchBase = $this->searchBase;
         }
@@ -190,7 +188,7 @@ final class LdapActions implements LdapActionsService
      */
     public function getAttributes(string $filter): AttributeCollection
     {
-        $searchResults = $this->getResults($filter)->getFirst();
+        $searchResults = $this->getResults($filter)->current();
 
         if ($searchResults === null) {
             return new AttributeCollection();
@@ -237,8 +235,6 @@ final class LdapActions implements LdapActionsService
         array  $attributes = self::USER_ATTRIBUTES,
         ?string $searchBase = null
     ): LdapResults {
-        $results = $this->getResults($filter, $attributes, $searchBase);
-
-        return new LdapResults($results->count(), $results);
+        return new LdapResults($this->getResults($filter, $attributes, $searchBase));
     }
 }

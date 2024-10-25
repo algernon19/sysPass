@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 /*
  * sysPass
@@ -52,11 +53,10 @@ use SP\Tests\UnitaryTestCase;
 class LdapImportTest extends UnitaryTestCase
 {
 
-    private LdapImport                  $ldapImport;
-    private UserService|MockObject      $userService;
-    private UserGroupService|MockObject $userGroupService;
-    private LdapActionsService|MockObject    $ldapActionsService;
-    private LdapConnectionHandler|MockObject $ldapConnection;
+    private LdapImport                    $ldapImport;
+    private UserService|MockObject        $userService;
+    private UserGroupService|MockObject   $userGroupService;
+    private LdapActionsService|MockObject $ldapActionsService;
 
     public static function emptyNameOrLoginProvider(): array
     {
@@ -142,7 +142,7 @@ class LdapImportTest extends UnitaryTestCase
             ->expects($this->once())
             ->method('getObjects')
             ->with('test_filter')
-            ->willReturn(new LdapResults(100, new ArrayIterator($entry)));
+            ->willReturn(new LdapResults(new ArrayIterator($entry)));
 
         $user = new User(
             [
@@ -164,7 +164,7 @@ class LdapImportTest extends UnitaryTestCase
         $out = $this->ldapImport->importUsers($ldapParams, $ldapImportParams);
 
         $this->assertEquals(1, $out->getSyncedObjects());
-        $this->assertEquals(100, $out->getTotalObjects());
+        $this->assertEquals(1, $out->getTotalObjects());
         $this->assertEquals(0, $out->getErrorObjects());
     }
 
@@ -192,6 +192,9 @@ class LdapImportTest extends UnitaryTestCase
                 'mail' => [
                     'me@email.com'
                 ]
+            ],
+            [
+                'test' => ['test']
             ]
         ];
 
@@ -199,7 +202,7 @@ class LdapImportTest extends UnitaryTestCase
             ->expects($this->once())
             ->method('getObjects')
             ->with($filter)
-            ->willReturn(new LdapResults(100, new ArrayIterator($entry)));
+            ->willReturn(new LdapResults(new ArrayIterator($entry)));
 
         $user = new User(
             [
@@ -221,7 +224,7 @@ class LdapImportTest extends UnitaryTestCase
         $out = $this->ldapImport->importUsers($ldapParams, $ldapImportParams);
 
         $this->assertEquals(1, $out->getSyncedObjects());
-        $this->assertEquals(100, $out->getTotalObjects());
+        $this->assertEquals(2, $out->getTotalObjects());
         $this->assertEquals(0, $out->getErrorObjects());
     }
 
@@ -243,7 +246,7 @@ class LdapImportTest extends UnitaryTestCase
             ->expects($this->once())
             ->method('getObjects')
             ->with('test_filter')
-            ->willReturn(new LdapResults(100, new ArrayIterator($entry)));
+            ->willReturn(new LdapResults(new ArrayIterator($entry)));
 
         $this->userService
             ->expects($this->never())
@@ -275,6 +278,9 @@ class LdapImportTest extends UnitaryTestCase
                 'mail' => [
                     'me@email.com'
                 ]
+            ],
+            [
+                'test' => ['test']
             ]
         ];
 
@@ -282,7 +288,7 @@ class LdapImportTest extends UnitaryTestCase
             ->expects($this->once())
             ->method('getObjects')
             ->with('test_filter')
-            ->willReturn(new LdapResults(100, new ArrayIterator($entry)));
+            ->willReturn(new LdapResults(new ArrayIterator($entry)));
 
         $user = new User(
             [
@@ -305,7 +311,7 @@ class LdapImportTest extends UnitaryTestCase
         $out = $this->ldapImport->importUsers($ldapParams, $ldapImportParams);
 
         $this->assertEquals(0, $out->getSyncedObjects());
-        $this->assertEquals(100, $out->getTotalObjects());
+        $this->assertEquals(2, $out->getTotalObjects());
         $this->assertEquals(1, $out->getErrorObjects());
     }
 
@@ -326,6 +332,9 @@ class LdapImportTest extends UnitaryTestCase
                 'test_group' => [
                     'Test Group'
                 ]
+            ],
+            [
+                'test' => ['test']
             ]
         ];
 
@@ -333,7 +342,7 @@ class LdapImportTest extends UnitaryTestCase
             ->expects($this->once())
             ->method('getObjects')
             ->with('test_filter')
-            ->willReturn(new LdapResults(100, new ArrayIterator($entry)));
+            ->willReturn(new LdapResults(new ArrayIterator($entry)));
 
         $group = new UserGroup(
             [
@@ -350,7 +359,7 @@ class LdapImportTest extends UnitaryTestCase
         $out = $this->ldapImport->importGroups($ldapParams, $ldapImportParams);
 
         $this->assertEquals(1, $out->getSyncedObjects());
-        $this->assertEquals(100, $out->getTotalObjects());
+        $this->assertEquals(2, $out->getTotalObjects());
     }
 
     /**
@@ -371,6 +380,9 @@ class LdapImportTest extends UnitaryTestCase
                 'test_group' => [
                     'Test Group'
                 ]
+            ],
+            [
+                'test' => ['test']
             ]
         ];
 
@@ -378,7 +390,7 @@ class LdapImportTest extends UnitaryTestCase
             ->expects($this->once())
             ->method('getObjects')
             ->with($filter)
-            ->willReturn(new LdapResults(100, new ArrayIterator($entry)));
+            ->willReturn(new LdapResults(new ArrayIterator($entry)));
 
         $group = new UserGroup(
             [
@@ -395,7 +407,7 @@ class LdapImportTest extends UnitaryTestCase
         $out = $this->ldapImport->importGroups($ldapParams, $ldapImportParams);
 
         $this->assertEquals(1, $out->getSyncedObjects());
-        $this->assertEquals(100, $out->getTotalObjects());
+        $this->assertEquals(2, $out->getTotalObjects());
     }
 
     /**
@@ -410,13 +422,17 @@ class LdapImportTest extends UnitaryTestCase
             self::$faker->password
         );
         $ldapImportParams = new LdapImportParamsDto(100, 200, 'test_login', 'test_user', 'test_group', 'test_filter');
-        $entry = [[]];
+        $entry = [
+            [
+                'test' => ['test']
+            ]
+        ];
 
         $this->ldapActionsService
             ->expects($this->once())
             ->method('getObjects')
             ->with('test_filter')
-            ->willReturn(new LdapResults(100, new ArrayIterator($entry)));
+            ->willReturn(new LdapResults(new ArrayIterator($entry)));
 
         $this->userGroupService
             ->expects($this->never())
@@ -425,7 +441,7 @@ class LdapImportTest extends UnitaryTestCase
         $out = $this->ldapImport->importGroups($ldapParams, $ldapImportParams);
 
         $this->assertEquals(0, $out->getSyncedObjects());
-        $this->assertEquals(100, $out->getTotalObjects());
+        $this->assertEquals(1, $out->getTotalObjects());
         $this->assertEquals(0, $out->getErrorObjects());
     }
 
@@ -446,6 +462,9 @@ class LdapImportTest extends UnitaryTestCase
                 'test_group' => [
                     'Test Group'
                 ]
+            ],
+            [
+                'test' => ['test']
             ]
         ];
 
@@ -453,7 +472,7 @@ class LdapImportTest extends UnitaryTestCase
             ->expects($this->once())
             ->method('getObjects')
             ->with('test_filter')
-            ->willReturn(new LdapResults(100, new ArrayIterator($entry)));
+            ->willReturn(new LdapResults(new ArrayIterator($entry)));
 
         $group = new UserGroup(
             [
@@ -471,7 +490,7 @@ class LdapImportTest extends UnitaryTestCase
         $out = $this->ldapImport->importGroups($ldapParams, $ldapImportParams);
 
         $this->assertEquals(0, $out->getSyncedObjects());
-        $this->assertEquals(100, $out->getTotalObjects());
+        $this->assertEquals(2, $out->getTotalObjects());
         $this->assertEquals(1, $out->getErrorObjects());
     }
 
@@ -482,14 +501,13 @@ class LdapImportTest extends UnitaryTestCase
         $this->userService = $this->createMock(UserService::class);
         $this->userGroupService = $this->createMock(UserGroupService::class);
         $this->ldapActionsService = $this->createMock(LdapActionsService::class);
-        $this->ldapConnection = $this->createMock(LdapConnectionHandler::class);
 
         $this->ldapImport = new LdapImport(
             $this->application,
             $this->userService,
             $this->userGroupService,
             $this->ldapActionsService,
-            $this->ldapConnection
+            $this->createMock(LdapConnectionHandler::class)
         );
     }
 }

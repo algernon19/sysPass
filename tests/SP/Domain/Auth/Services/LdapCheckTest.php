@@ -56,7 +56,7 @@ class LdapCheckTest extends UnitaryTestCase
     {
         $ldapData = $this->getLdapData();
 
-        $ldapResults = new LdapResults(10, new ArrayIterator($ldapData));
+        $ldapResults = new LdapResults(new ArrayIterator($ldapData));
 
         $this->ldapActionsService
             ->expects($this->once())
@@ -148,7 +148,7 @@ class LdapCheckTest extends UnitaryTestCase
 
         $ldapData = $this->getLdapData();
 
-        $ldapResults = new LdapResults(10, new ArrayIterator($ldapData));
+        $ldapResults = new LdapResults(new ArrayIterator($ldapData));
 
         $this->ldapActionsService
             ->expects($this->exactly(3))
@@ -182,8 +182,8 @@ class LdapCheckTest extends UnitaryTestCase
         $ldapDataUsers = $this->getLdapData();
         $ldapDataGroups = $this->getLdapData();
 
-        $ldapResultsUsers = new LdapResults(10, new ArrayIterator($ldapDataUsers));
-        $ldapResultsGroups = new LdapResults(10, new ArrayIterator($ldapDataGroups));
+        $ldapResultsUsers = new LdapResults(new ArrayIterator($ldapDataUsers));
+        $ldapResultsGroups = new LdapResults(new ArrayIterator($ldapDataGroups));
 
         $this->ldapActionsService
             ->expects($this->exactly(3))

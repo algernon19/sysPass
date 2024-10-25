@@ -26,6 +26,7 @@ declare(strict_types=1);
 
 namespace SP\Tests\Domain\Auth\Providers\Ldap;
 
+use ArrayIterator;
 use EmptyIterator;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
@@ -162,7 +163,7 @@ class LdapMsAdsTest extends UnitaryTestCase
             ->expects(self::once())
             ->method('getObjects')
             ->with($groupsFilter, ['dn'], $userDn)
-            ->willReturn(new LdapResults(1, new EmptyIterator()));
+            ->willReturn(new LdapResults(new ArrayIterator([1])));
 
         $this->eventDispatcher
             ->expects(self::once())
@@ -196,7 +197,7 @@ class LdapMsAdsTest extends UnitaryTestCase
             ->expects(self::once())
             ->method('getObjects')
             ->with($groupsFilter, ['dn'], $userDn)
-            ->willReturn(new LdapResults(0, new EmptyIterator()));
+            ->willReturn(new LdapResults(new EmptyIterator()));
 
         $this->eventDispatcher
             ->expects(self::once())

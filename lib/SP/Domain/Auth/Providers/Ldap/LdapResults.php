@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 /**
  * sysPass
@@ -32,12 +33,17 @@ use Iterator;
  */
 readonly class LdapResults
 {
-    public function __construct(private int $count, private Iterator $iterator)
+    private int $count;
+
+    public function __construct(private Iterator $iterator)
     {
+        $this->count = iterator_count($this->iterator);
     }
 
     public function getIterator(): Iterator
     {
+        $this->iterator->rewind();
+
         return $this->iterator;
     }
 

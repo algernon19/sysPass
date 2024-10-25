@@ -26,7 +26,7 @@ declare(strict_types=1);
 
 namespace SP\Tests\Modules\Web\Controllers\ConfigLdap;
 
-use Laminas\Ldap\Collection;
+use ArrayIterator;
 use Laminas\Ldap\Ldap;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Test;
@@ -53,24 +53,23 @@ class ConfigLdapTest extends IntegrationTestCase
     #[BodyChecker('outputCheckerCheck')]
     public function check()
     {
-        $collection = self::createStub(Collection::class);
-        $collection->method('count')
-                   ->willReturn(2);
-        $collection->method('valid')
-                   ->willReturn(true, true, false);
-        $collection->method('current')
-                   ->willReturn([
-                                    'count' => self::$faker->randomNumber(2),
-                                    'dn' => self::$faker->userName(),
-                                    'email' => [self::$faker->email(), self::$faker->email()],
-                                    'member' => self::$faker->userName(),
-                                    'memberUid' => self::$faker->uuid(),
-                                    'uniqueMember' => self::$faker->uuid()
-                                ]);
+        $results = array_map(
+            fn() => [
+                'count' => 5,
+                'dn' => self::$faker->userName(),
+                'email' => [self::$faker->email(), self::$faker->email()],
+                'member' => self::$faker->userName(),
+                'memberUid' => self::$faker->uuid(),
+                'uniqueMember' => self::$faker->uuid()
+            ],
+            range(0, 4)
+        );
+
+        $iterator = new ArrayIterator($results);
 
         $ldap = self::createStub(Ldap::class);
         $ldap->method('search')
-             ->willReturn($collection);
+            ->willReturn($iterator);
 
         $data = [
             'ldap_server' => self::$faker->domainName(),
@@ -84,6 +83,104 @@ class ConfigLdapTest extends IntegrationTestCase
 
         $container = $this->buildContainer(
             IntegrationTestCase::buildRequest('post', 'index.php', ['r' => 'configLdap/check/false'], $data),
+            [
+                Ldap::class => $ldap
+            ]
+        );
+
+        IntegrationTestCase::runApp($container);
+    }
+
+    /**
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
+     * @throws Exception
+     */
+    #[Test]
+    #[BodyChecker('outputCheckerCheckImport')]
+    public function checkImport()
+    {
+        $results = array_map(
+            fn() => [
+                'count' => 5,
+                'dn' => self::$faker->userName(),
+                'email' => [self::$faker->email(), self::$faker->email()],
+                'member' => self::$faker->userName(),
+                'memberUid' => self::$faker->uuid(),
+                'uniqueMember' => self::$faker->uuid()
+            ],
+            range(0, 4)
+        );
+
+        $iterator = new ArrayIterator($results);
+
+        $ldap = self::createStub(Ldap::class);
+        $ldap->method('search')
+             ->willReturn($iterator);
+
+        $data = [
+            'ldap_server' => self::$faker->domainName(),
+            'ldap_server_type' => 1,
+            'ldap_binduser' => self::$faker->userName(),
+            'ldap_bindpass' => self::$faker->password(),
+            'ldap_base' => 'dc=test',
+            'ldap_group' => 'cn=group,dc=test',
+            'ldap_tls_enabled' => self::$faker->boolean(),
+            'ldap_import_groups' => true,
+            'ldap_import_filter' => ''
+        ];
+
+        $container = $this->buildContainer(
+            IntegrationTestCase::buildRequest('post', 'index.php', ['r' => 'configLdap/checkImport'], $data),
+            [
+                Ldap::class => $ldap
+            ]
+        );
+
+        IntegrationTestCase::runApp($container);
+    }
+
+    /**
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
+     * @throws Exception
+     */
+    #[Test]
+    #[BodyChecker('outputCheckerCheckImportWithFilter')]
+    public function checkImportWithFilter()
+    {
+        $results = array_map(
+            fn() => [
+                'count' => 5,
+                'dn' => self::$faker->userName(),
+                'email' => [self::$faker->email(), self::$faker->email()],
+                'member' => self::$faker->userName(),
+                'memberUid' => self::$faker->uuid(),
+                'uniqueMember' => self::$faker->uuid()
+            ],
+            range(0, 4)
+        );
+
+        $iterator = new ArrayIterator($results);
+
+        $ldap = self::createStub(Ldap::class);
+        $ldap->method('search')
+             ->willReturn($iterator);
+
+        $data = [
+            'ldap_server' => self::$faker->domainName(),
+            'ldap_server_type' => 1,
+            'ldap_binduser' => self::$faker->userName(),
+            'ldap_bindpass' => self::$faker->password(),
+            'ldap_base' => 'dc=test',
+            'ldap_group' => 'cn=group,dc=test',
+            'ldap_tls_enabled' => self::$faker->boolean(),
+            'ldap_import_groups' => true,
+            'ldap_import_filter' => 'a_filter'
+        ];
+
+        $container = $this->buildContainer(
+            IntegrationTestCase::buildRequest('post', 'index.php', ['r' => 'configLdap/checkImport'], $data),
             [
                 Ldap::class => $ldap
             ]
@@ -107,8 +204,53 @@ class ConfigLdapTest extends IntegrationTestCase
 
         self::assertCount(1, $filter);
         self::assertEquals('OK', $json->status);
-        self::assertEquals(['LDAP connection OK', 'Objects found: 1'], $json->description);
+        self::assertEquals(['LDAP connection OK', 'Objects found: 5'], $json->description);
+        self::assertCount(5, $json->data->items[0]->items);
         self::assertNotEmpty($json->data->items[0]->items[0]);
         self::assertEquals('person', $json->data->items[0]->type);
+    }
+
+    /**
+     * @param string $output
+     * @return void
+     */
+    private function outputCheckerCheckImport(string $output): void
+    {
+        $json = json_decode($output);
+
+        $crawler = new Crawler($json->data->template);
+        $filter = $crawler->filterXPath(
+            '//div[@id="box-popup"]/table[@class="popup-data"]/tbody/tr[@id="ldap-results"]'
+        )->extract(['id']);
+
+        self::assertCount(1, $filter);
+        self::assertEquals('OK', $json->status);
+        self::assertEquals(['LDAP connection OK', 'Objects found: 10'], $json->description);
+        self::assertCount(5, $json->data->items[0]->items);
+        self::assertNotEmpty($json->data->items[0]->items[0]);
+        self::assertEquals('person', $json->data->items[0]->type);
+        self::assertCount(5, $json->data->items[1]->items);
+        self::assertNotEmpty($json->data->items[1]->items[0]);
+        self::assertEquals('group', $json->data->items[1]->type);
+    }
+
+    /**
+     * @param string $output
+     * @return void
+     */
+    private function outputCheckerCheckImportWithFilter(string $output): void
+    {
+        $json = json_decode($output);
+
+        $crawler = new Crawler($json->data->template);
+        $filter = $crawler->filterXPath(
+            '//div[@id="box-popup"]/table[@class="popup-data"]/tbody/tr[@id="ldap-results"]'
+        )->extract(['id']);
+
+        self::assertCount(1, $filter);
+        self::assertEquals('OK', $json->status);
+        self::assertEquals(['LDAP connection OK', 'Objects found: 5'], $json->description);
+        self::assertCount(5, $json->data->items[0]->items);
+        self::assertNotEmpty($json->data->items[0]->items[0]);
     }
 }
