@@ -60,18 +60,13 @@ final class SaveController extends SimpleControllerBase
         $configData = $this->config->getConfigData();
 
         $ldapEnabled = $this->request->analyzeBool('ldap_enabled', false);
-        $ldapDefaultGroup = $this->request->analyzeInt('ldap_defaultgroup');
-        $ldapDefaultProfile = $this->request->analyzeInt('ldap_defaultprofile');
-
-        $ldapParams = LdapParams::fromRequest($this->request);
-
-        if ($ldapEnabled
-            && !($ldapParams->getServer() || $ldapParams->getSearchBase() || $ldapParams->getBindDn())
-        ) {
-            throw ValidationException::error(__u('Missing LDAP parameters'));
-        }
 
         if ($ldapEnabled) {
+            $ldapParams = LdapParams::fromRequest($this->request);
+
+            $ldapDefaultGroup = $this->request->analyzeInt('ldap_defaultgroup');
+            $ldapDefaultProfile = $this->request->analyzeInt('ldap_defaultprofile');
+
             $configData->setLdapEnabled(true);
             $configData->setLdapType($ldapParams->getType()->value);
             $configData->setLdapTlsEnabled($ldapParams->isTlsEnabled());

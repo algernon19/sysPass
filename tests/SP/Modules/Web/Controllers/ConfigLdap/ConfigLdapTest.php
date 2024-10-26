@@ -246,6 +246,70 @@ class ConfigLdapTest extends IntegrationTestCase
     }
 
     /**
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
+     * @throws Exception
+     */
+    #[Test]
+    public function save()
+    {
+        $data = [
+            'ldap_enabled' => true,
+            'ldap_server' => self::$faker->domainName(),
+            'ldap_server_type' => 1,
+            'ldap_binduser' => self::$faker->userName(),
+            'ldap_bindpass' => self::$faker->password(),
+            'ldap_base' => 'dc=test',
+            'ldap_group' => 'cn=group,dc=test',
+            'ldap_tls_enabled' => self::$faker->boolean(),
+            'ldap_defaultgroup' => 100,
+            'ldap_defaultprofile' => 200,
+            'ldap_filter_user_object' => 'a_filter',
+            'ldap_filter_group_object' => 'a_filter',
+            'ldap_filter_user_attributes' => 'a_filter',
+            'ldap_filter_group_attributes' => 'a_filter',
+            'ldap_database_enabled' => self::$faker->boolean(),
+        ];
+
+        $container = $this->buildContainer(
+            IntegrationTestCase::buildRequest('post', 'index.php', ['r' => 'configLdap/save'], $data)
+        );
+
+        $this->expectOutputString('{"status":"OK","description":"Configuration updated","data":null}');
+
+        IntegrationTestCase::runApp($container);
+    }
+
+    /**
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
+     * @throws Exception
+     */
+    #[Test]
+    public function saveWithNoChanges()
+    {
+        $data = [
+            'ldap_enabled' => false
+        ];
+
+        $container = $this->buildContainer(
+            IntegrationTestCase::buildRequest('post', 'index.php', ['r' => 'configLdap/save'], $data)
+        );
+
+        $this->expectOutputString('{"status":"OK","description":"Configuration updated","data":null}');
+
+        IntegrationTestCase::runApp($container);
+    }
+
+    protected function getConfigData(): array
+    {
+        $configData = parent::getConfigData();
+        $configData['isLdapEnabled'] = true;
+
+        return $configData;
+    }
+
+    /**
      * @param string $output
      * @return void
      */
