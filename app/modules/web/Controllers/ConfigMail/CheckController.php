@@ -24,24 +24,26 @@
 
 namespace SP\Modules\Web\Controllers\ConfigMail;
 
-
-use Exception;
-use JsonException;
 use SP\Core\Application;
 use SP\Core\Events\Event;
 use SP\Core\Events\EventMessage;
+use SP\Domain\Common\Attributes\Action;
+use SP\Domain\Common\Dtos\ActionResponse;
+use SP\Domain\Common\Enums\ResponseType;
+use SP\Domain\Common\Services\ServiceException;
 use SP\Domain\Config\Services\ConfigUtil;
 use SP\Domain\Core\Acl\AclActionsInterface;
 use SP\Domain\Core\Acl\UnauthorizedPageException;
 use SP\Domain\Core\Exceptions\SessionTimeout;
 use SP\Domain\Core\Exceptions\SPException;
 use SP\Domain\Core\Exceptions\ValidationException;
-use SP\Domain\Http\Dtos\JsonMessage;
 use SP\Domain\Notification\Dtos\MailParams;
 use SP\Domain\Notification\Ports\MailService;
 use SP\Modules\Web\Controllers\SimpleControllerBase;
 use SP\Modules\Web\Controllers\Traits\ConfigTrait;
 use SP\Mvc\Controller\SimpleControllerHelper;
+
+use function SP\__u;
 
 /**
  * Class CheckController
@@ -59,45 +61,31 @@ final class CheckController extends SimpleControllerBase
     }
 
     /**
-     * @return bool
-     * @throws JsonException
+     * @throws ValidationException
+     * @throws ServiceException
      */
-    public function checkAction(): bool
+    #[Action(ResponseType::JSON)]
+    public function checkAction(): ActionResponse
     {
-        try {
-            $mailParams = $this->handleMailConfig();
+        $mailParams = $this->handleMailConfig();
 
-            $mailRecipients = ConfigUtil::mailAddressesAdapter($this->request->analyzeString('mail_recipients'));
+        $mailRecipients = ConfigUtil::mailAddressesAdapter($this->request->analyzeString('mail_recipients'));
 
-            // Valores para la configuración del Correo
-            if (empty($mailParams->getServer()) || empty($mailParams->getFrom()) || count($mailRecipients) === 0) {
-                throw new ValidationException(SPException::ERROR, __u('Missing Mail parameters'));
-            }
-
-            $this->mailService->check($mailParams, $mailRecipients[0]);
-
-            $this->eventDispatcher->notify(
-                'send.mail.check',
-                new Event(
-                    $this,
-                    EventMessage::build()
-                        ->addDescription(__u('Email sent'))
-                        ->addDetail(__u('Recipient'), $mailRecipients[0])
-                )
-            );
-
-            return $this->returnJsonResponse(
-                JsonMessage::JSON_SUCCESS,
-                __u('Email sent'),
-                [__u('Please, check your inbox')]
-            );
-        } catch (Exception $e) {
-            processException($e);
-
-            $this->eventDispatcher->notify('exception', new Event($e));
-
-            return $this->returnJsonResponseException($e);
+        if (empty($mailParams->getServer()) || empty($mailParams->getFrom()) || count($mailRecipients) === 0) {
+            throw new ValidationException(SPException::ERROR, __u('Missing Mail parameters'));
         }
+
+        $this->mailService->check($mailParams, $mailRecipients[0]);
+
+        $this->eventDispatcher->notify(
+            'send.mail.check',
+            new Event(
+                $this,
+                EventMessage::build(__u('Email sent'))->addDetail(__u('Recipient'), $mailRecipients[0])
+            )
+        );
+
+        return ActionResponse::ok(__u('Email sent'), [__u('Please, check your inbox')]);
     }
 
     /**
@@ -117,19 +105,13 @@ final class CheckController extends SimpleControllerBase
     }
 
     /**
-     * @return void
-     * @throws JsonException
+     * @throws SPException
      * @throws SessionTimeout
+     * @throws UnauthorizedPageException
      */
     protected function initialize(): void
     {
-        try {
-            $this->checks();
-            $this->checkAccess(AclActionsInterface::CONFIG_MAIL);
-        } catch (UnauthorizedPageException $e) {
-            $this->eventDispatcher->notify('exception', new Event($e));
-
-            $this->returnJsonResponseException($e);
-        }
+        $this->checks();
+        $this->checkAccess(AclActionsInterface::CONFIG_MAIL);
     }
 }

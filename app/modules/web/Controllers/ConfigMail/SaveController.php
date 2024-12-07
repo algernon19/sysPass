@@ -24,31 +24,33 @@
 
 namespace SP\Modules\Web\Controllers\ConfigMail;
 
-use JsonException;
 use SP\Core\Events\Event;
 use SP\Core\Events\EventMessage;
+use SP\Domain\Common\Attributes\Action;
+use SP\Domain\Common\Dtos\ActionResponse;
+use SP\Domain\Common\Enums\ResponseType;
 use SP\Domain\Config\Services\ConfigUtil;
 use SP\Domain\Core\Acl\AclActionsInterface;
 use SP\Domain\Core\Acl\UnauthorizedPageException;
 use SP\Domain\Core\Exceptions\SessionTimeout;
-use SP\Domain\Http\Dtos\JsonMessage;
+use SP\Domain\Core\Exceptions\SPException;
 use SP\Modules\Web\Controllers\SimpleControllerBase;
 use SP\Modules\Web\Controllers\Traits\ConfigTrait;
 
+use function SP\__u;
+
 /**
  * Class SaveController
- *
- * @package SP\Modules\Web\Controllers
  */
 final class SaveController extends SimpleControllerBase
 {
     use ConfigTrait;
 
     /**
-     * @return bool
-     * @throws JsonException
+     * @throws SPException
      */
-    public function saveAction(): bool
+    #[Action(ResponseType::JSON)]
+    public function saveAction(): ActionResponse
     {
         $eventMessage = EventMessage::build();
         $configData = $this->config->getConfigData();
@@ -63,11 +65,10 @@ final class SaveController extends SimpleControllerBase
         $mailFrom = $this->request->analyzeEmail('mail_from');
         $mailRequests = $this->request->analyzeBool('mail_requests_enabled', false);
         $mailAuth = $this->request->analyzeBool('mail_auth_enabled', false);
-        $mailRecipients = ConfigUtil::mailAddressesAdapter($this->request->analyzeString('mail_recipients'));
+        $mailRecipients = ConfigUtil::mailAddressesAdapter($this->request->analyzeString('mail_recipients', ''));
 
-        if ($mailEnabled && (empty($mailServer) || empty($mailFrom))
-        ) {
-            return $this->returnJsonResponse(JsonMessage::JSON_ERROR, __u('Missing Mail parameters'));
+        if ($mailEnabled && (empty($mailServer) || empty($mailFrom))) {
+            return ActionResponse::error(__u('Missing Mail parameters'));
         }
 
         if ($mailEnabled) {
@@ -101,7 +102,7 @@ final class SaveController extends SimpleControllerBase
 
             $eventMessage->addDescription(__u('Mail disabled'));
         } else {
-            return $this->returnJsonResponse(JsonMessage::JSON_SUCCESS, __u('No changes'));
+            return ActionResponse::ok(__u('No changes'));
         }
 
         return $this->saveConfig(
@@ -114,19 +115,13 @@ final class SaveController extends SimpleControllerBase
     }
 
     /**
-     * @return void
-     * @throws JsonException
+     * @throws SPException
      * @throws SessionTimeout
+     * @throws UnauthorizedPageException
      */
     protected function initialize(): void
     {
-        try {
-            $this->checks();
-            $this->checkAccess(AclActionsInterface::CONFIG_MAIL);
-        } catch (UnauthorizedPageException $e) {
-            $this->eventDispatcher->notify('exception', new Event($e));
-
-            $this->returnJsonResponseException($e);
-        }
+        $this->checks();
+        $this->checkAccess(AclActionsInterface::CONFIG_MAIL);
     }
 }
