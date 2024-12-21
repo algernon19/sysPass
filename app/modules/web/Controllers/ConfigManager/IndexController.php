@@ -24,11 +24,6 @@
 
 namespace SP\Modules\Web\Controllers\ConfigManager;
 
-use DI\DependencyException;
-use DI\NotFoundException;
-use Psr\Container\ContainerExceptionInterface;
-use Psr\Container\NotFoundExceptionInterface;
-use SP\Core\Acl\Acl;
 use SP\Core\Application;
 use SP\Core\Bootstrap\Path;
 use SP\Core\Bootstrap\PathsContext;
@@ -40,15 +35,16 @@ use SP\Domain\Auth\Providers\Ldap\LdapMsAds;
 use SP\Domain\Auth\Providers\Ldap\LdapStd;
 use SP\Domain\Auth\Providers\Ldap\LdapTypeEnum;
 use SP\Domain\Auth\Services\AuthException;
+use SP\Domain\Common\Attributes\Action;
+use SP\Domain\Common\Dtos\ActionResponse;
+use SP\Domain\Common\Enums\ResponseType;
 use SP\Domain\Common\Services\ServiceException;
 use SP\Domain\Config\Ports\ConfigService;
 use SP\Domain\Core\Acl\AclActionsInterface;
 use SP\Domain\Core\AppInfoInterface;
-use SP\Domain\Core\Exceptions\CheckException;
 use SP\Domain\Core\Exceptions\ConstraintException;
 use SP\Domain\Core\Exceptions\QueryException;
 use SP\Domain\Core\Exceptions\SessionTimeout;
-use SP\Domain\Core\Exceptions\SPException;
 use SP\Domain\Core\File\MimeType;
 use SP\Domain\Core\File\MimeTypesService;
 use SP\Domain\Crypt\Services\TemporaryMasterPass;
@@ -78,66 +74,52 @@ use function SP\__;
  */
 final class IndexController extends ControllerBase
 {
-    protected TabsHelper     $tabsHelper;
-    private UserService      $userService;
-    private UserGroupService $userGroupService;
-    private UserProfileService $userProfileService;
-    private MimeTypesService   $mimeTypes;
-    private DatabaseUtil     $databaseUtil;
-    private ConfigService  $configService;
-    private AccountService $accountService;
 
     /**
      * @throws AuthException
      * @throws SessionTimeout
      */
     public function __construct(
-        Application                   $application,
-        WebControllerHelper           $webControllerHelper,
-        TabsHelper                    $tabsHelper,
-        UserService                   $userService,
-        UserGroupService              $userGroupService,
-        UserProfileService            $userProfileService,
-        MimeTypesService              $mimeTypes,
-        DatabaseUtil                  $databaseUtil,
-        ConfigService                 $configService,
-        AccountService                $accountService,
-        private readonly BackupFiles  $backupFiles,
-        private readonly PathsContext $pathsContext
+        Application                         $application,
+        WebControllerHelper                 $webControllerHelper,
+        protected TabsHelper                $tabsHelper,
+        private readonly UserService        $userService,
+        private readonly UserGroupService   $userGroupService,
+        private readonly UserProfileService $userProfileService,
+        private readonly MimeTypesService   $mimeTypes,
+        private readonly DatabaseUtil       $databaseUtil,
+        private readonly ConfigService      $configService,
+        private readonly AccountService     $accountService,
+        private readonly BackupFiles        $backupFiles,
+        private readonly PathsContext       $pathsContext
     ) {
         parent::__construct($application, $webControllerHelper);
 
         $this->checkLoggedIn();
-
-        $this->tabsHelper = $tabsHelper;
-        $this->userService = $userService;
-        $this->userGroupService = $userGroupService;
-        $this->userProfileService = $userProfileService;
-        $this->mimeTypes = $mimeTypes;
-        $this->databaseUtil = $databaseUtil;
-        $this->configService = $configService;
-        $this->accountService = $accountService;
     }
 
 
     /**
-     * @throws ContainerExceptionInterface
-     * @throws NotFoundExceptionInterface
-     * @throws SPException
+     * @throws ConstraintException
+     * @throws NoSuchItemException
+     * @throws QueryException
+     * @throws ServiceException
      */
-    public function indexAction(): void
+    #[Action(ResponseType::PLAIN_TEXT)]
+    public function indexAction(): ActionResponse
     {
-        $this->getTabs();
+        return ActionResponse::ok($this->getGridTabs());
     }
 
     /**
      * Returns a tabbed grid with items
      *
-     * @throws ContainerExceptionInterface
-     * @throws NotFoundExceptionInterface
-     * @throws SPException
+     * @throws ConstraintException
+     * @throws NoSuchItemException
+     * @throws QueryException
+     * @throws ServiceException
      */
-    protected function getTabs(): void
+    protected function getGridTabs(): string
     {
         if ($this->checkAccess(AclActionsInterface::CONFIG_GENERAL)) {
             $this->tabsHelper->addTab($this->getConfigGeneral());
@@ -182,16 +164,15 @@ final class IndexController extends ControllerBase
         );
 
         $this->tabsHelper->renderTabs(
-            Acl::getActionRoute(AclActionsInterface::CONFIG),
+            $this->acl->getRouteFor(AclActionsInterface::CONFIG),
             $this->request->analyzeInt('tabIndex', 0)
         );
 
-        $this->view();
+        return $this->render();
     }
 
     /**
      * @return DataTab
-     * @throws CheckException
      * @throws ConstraintException
      * @throws QueryException
      */
@@ -215,12 +196,12 @@ final class IndexController extends ControllerBase
         $template->assign(
             'isDemoMode',
             $this->configData->isDemoEnabled()
-            && !$this->userDto->getIsAdminApp()
+            && !$this->userDto->isAdminApp
         );
         $template->assign(
             'isDisabled',
             $this->configData->isDemoEnabled()
-            && !$this->userDto->getIsAdminApp() ? 'disabled' : ''
+            && !$this->userDto->isAdminApp ? 'disabled' : ''
         );
         $template->assign(
             'users',
@@ -255,7 +236,6 @@ final class IndexController extends ControllerBase
 
     /**
      * @return DataTab
-     * @throws CheckException
      */
     protected function getAccountConfig(): DataTab
     {
@@ -285,7 +265,6 @@ final class IndexController extends ControllerBase
 
     /**
      * @return DataTab
-     * @throws CheckException
      */
     protected function getWikiConfig(): DataTab
     {
@@ -302,7 +281,6 @@ final class IndexController extends ControllerBase
 
     /**
      * @return DataTab
-     * @throws CheckException
      * @throws ConstraintException
      * @throws QueryException
      */
@@ -401,11 +379,10 @@ final class IndexController extends ControllerBase
     }
 
     /**
-     * @throws DependencyException
-     * @throws NotFoundException
+     * @return DataTab
      * @throws ConstraintException
-     * @throws QueryException
      * @throws NoSuchItemException
+     * @throws QueryException
      * @throws ServiceException
      */
     protected function getEncryptionConfig(): DataTab
@@ -415,10 +392,6 @@ final class IndexController extends ControllerBase
 
         $numAccounts = $this->accountService->getTotalNumAccounts();
         $template->assign('numAccounts', $numAccounts);
-
-        if ($numAccounts > 150) {
-            $template->assign('taskId', Task::genTaskId('masterpass'));
-        }
 
         $template->assign(
             'lastUpdateMPass',
@@ -452,7 +425,7 @@ final class IndexController extends ControllerBase
     }
 
     /**
-     * @throws CheckException
+     * @return DataTab
      */
     protected function getBackupConfig(): DataTab
     {
@@ -488,7 +461,7 @@ final class IndexController extends ControllerBase
                 'lastBackupTime',
                 date('r', $backupAppFile->getFileTime())
             );
-        } catch (FileException $e) {
+        } catch (FileException) {
             $template->assign('hasBackup', false);
             $template->assign(
                 'lastBackupTime',
@@ -504,7 +477,7 @@ final class IndexController extends ControllerBase
                 'lastExportTime',
                 date('r', $exportFile->getFileTime())
             );
-        } catch (FileException $e) {
+        } catch (FileException) {
             $template->assign('hasExport', false);
             $template->assign(
                 'lastExportTime',
@@ -528,12 +501,12 @@ final class IndexController extends ControllerBase
         $template->assign(
             'userGroups',
             SelectItemAdapter::factory($this->userGroupService->getAll())
-                ->getItemsFromModelSelected([$this->userDto->getUserGroupId()])
+                ->getItemsFromModelSelected([$this->userDto->userGroupId])
         );
         $template->assign(
             'users',
             SelectItemAdapter::factory($this->userService->getAll())
-                ->getItemsFromModelSelected([$this->userDto->getId()])
+                ->getItemsFromModelSelected([$this->userDto->id])
         );
 
         return new DataTab(__('Import Accounts'), $template);
@@ -555,7 +528,6 @@ final class IndexController extends ControllerBase
             'configBackupDate',
             date('r', $this->configService->getByParam('config_backup_date', 0))
         );
-        $template->assign('plugins', $this->pluginManager->getLoadedPlugins());
         $template->assign(
             'locale',
             Language::$localeStatus ?: sprintf('%s (%s)', $this->configData->getSiteLang(), __('Not installed'))
@@ -571,11 +543,11 @@ final class IndexController extends ControllerBase
 
         $template->assign(
             'downloadConfigBackup',
-            !$isDemo && $this->userDto->getIsAdminApp()
+            !$isDemo && $this->userDto->isAdminApp
         );
         $template->assign(
             'downloadLog',
-            !$isDemo && is_readable($this->pathsContext[Path::LOG_FILE]) && $this->userDto->getIsAdminApp()
+            !$isDemo && is_readable($this->pathsContext[Path::LOG_FILE]) && $this->userDto->isAdminApp
         );
 
         return new DataTab(__('Information'), $template);
