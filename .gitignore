@@ -61,6 +61,7 @@ doc/*
 build/*
 tests/_output/*
 tests/tmp/
+tests/.phpunit.result.cache
 tests/res/cache/
 tests/res/config.xml
 tests/res/sysPass_db-*.sql

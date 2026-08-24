@@ -96,7 +96,6 @@ class FileHandlerTest extends TestCase
     /**
      * Comprobar un archivo válido
      *
-     * @doesNotPerformAssertions
      * @throws FileException
      */
     public function testCheckFileExists()

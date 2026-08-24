@@ -41,8 +41,8 @@
   },
   "require-dev": {
     "roave/security-advisories": "dev-latest",
-    "phpunit/phpunit": "^6",
-    "phpunit/dbunit": "^3",
+    "phpunit/phpunit": "^8.5.52",
+    "kornrunner/dbunit": "^5.0.1",
     "fzaninotto/faker": "^v1.8",
     "syspass/extension-installer-plugin": "v2.0.0",
     "nikic/php-parser": "^v4.1",

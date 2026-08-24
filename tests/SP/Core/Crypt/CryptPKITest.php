@@ -169,7 +169,7 @@ class CryptPKITest extends TestCase
      *
      * @throws SPException
      */
-    protected function setUp()
+    protected function setUp(): void
     {
         $this->cryptPki = new CryptPKI(new RSA());
     }
@@ -178,7 +178,7 @@ class CryptPKITest extends TestCase
      * Tears down the fixture, for example, close a network connection.
      * This method is called after a test is executed.
      */
-    protected function tearDown()
+    protected function tearDown(): void
     {
         unlink(CryptPKI::PUBLIC_KEY_FILE);
         unlink(CryptPKI::PRIVATE_KEY_FILE);

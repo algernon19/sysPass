@@ -27,6 +27,8 @@ namespace SP\Tests;
 use PDO;
 use PHPUnit\DbUnit\Database\DefaultConnection;
 use PHPUnit\DbUnit\DataSet\IDataSet;
+use PHPUnit\DbUnit\Operation\Factory;
+use PHPUnit\DbUnit\Operation\Operation;
 use PHPUnit\DbUnit\TestCaseTrait;
 use PHPUnit\Framework\TestCase;
 use SP\Core\Exceptions\SPException;
@@ -87,5 +89,13 @@ abstract class DatabaseTestCase extends TestCase
     protected function getDataSet()
     {
         return $this->createMySQLXMLDataSet(RESOURCE_DIR . DIRECTORY_SEPARATOR . 'datasets' . DIRECTORY_SEPARATOR . self::$dataset);
+    }
+
+    /**
+     * @return Operation
+     */
+    protected function getSetUpOperation()
+    {
+        return Factory::CLEAN_INSERT();
     }
 }
