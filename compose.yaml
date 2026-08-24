@@ -1,0 +1,129 @@
+name: syspass-local
+
+services:
+  permissions:
+    image: syspass/syspass:3.2.11-php7.4
+    network_mode: none
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        chown -R 33:33
+        /var/www/html/sysPass/app/config
+        /var/www/html/sysPass/app/backup
+        /var/www/html/sysPass/app/cache
+        /var/www/html/sysPass/app/resources
+        /var/www/html/sysPass/app/temp &&
+        chmod 750
+        /var/www/html/sysPass/app/config
+        /var/www/html/sysPass/app/backup
+        /var/www/html/sysPass/app/cache
+        /var/www/html/sysPass/app/resources
+        /var/www/html/sysPass/app/temp
+    volumes:
+      - legacy-config:/var/www/html/sysPass/app/config
+      - legacy-backup:/var/www/html/sysPass/app/backup
+      - legacy-cache:/var/www/html/sysPass/app/cache
+      - legacy-resources:/var/www/html/sysPass/app/resources
+      - legacy-temp:/var/www/html/sysPass/app/temp
+
+  db:
+    image: mariadb:10.2.44
+    environment:
+      MYSQL_ROOT_PASSWORD: ${SYSPASS_DB_ROOT_PASSWORD:-local-root-password}
+      MYSQL_DATABASE: syspass
+      MYSQL_USER: syspass
+      MYSQL_PASSWORD: ${SYSPASS_DB_PASSWORD:-local-syspass-password}
+    volumes:
+      - legacy-db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${SYSPASS_DB_ROOT_PASSWORD:-local-root-password}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - syspass
+
+  app:
+    image: syspass/syspass:3.2.11-php7.4
+    depends_on:
+      permissions:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+    environment:
+      USE_SSL: "no"
+      SYSPASS_DEV: "1"
+    entrypoint: ["apache2-foreground"]
+    ports:
+      - "127.0.0.1:${SYSPASS_HTTP_PORT:-8080}:80"
+    volumes:
+      - .:/var/www/html/sysPass
+      - legacy-vendor:/var/www/html/sysPass/vendor
+      - legacy-config:/var/www/html/sysPass/app/config
+      - legacy-backup:/var/www/html/sysPass/app/backup
+      - legacy-cache:/var/www/html/sysPass/app/cache
+      - legacy-resources:/var/www/html/sysPass/app/resources
+      - legacy-temp:/var/www/html/sysPass/app/temp
+    networks:
+      - syspass
+      - web
+    restart: unless-stopped
+
+  test:
+    image: syspass/syspass:3.2.11-php7.4
+    profiles: ["test"]
+    working_dir: /var/www/html/sysPass
+    depends_on:
+      test-db:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-lc"]
+    command:
+      - >-
+        mkdir -p tests/tmp tests/res/cache tests/_output &&
+        composer install --no-interaction --prefer-dist --no-plugins --no-scripts &&
+        vendor/bin/phpunit -c tests/phpunit.xml --testsuite Core
+    environment:
+      DB_SERVER: test-db
+      DB_NAME: syspass
+      DB_USER: root
+      DB_PASS: ${SYSPASS_DB_ROOT_PASSWORD:-local-root-password}
+    volumes:
+      - .:/var/www/html/sysPass
+      - test-git:/var/www/html/sysPass/.git
+      - test-vendor:/var/www/html/sysPass/vendor
+    networks:
+      - syspass
+
+  test-db:
+    image: mariadb:10.2.44
+    profiles: ["test"]
+    environment:
+      MYSQL_ROOT_PASSWORD: ${SYSPASS_DB_ROOT_PASSWORD:-local-root-password}
+      MYSQL_DATABASE: syspass
+    volumes:
+      - ./schemas/dbstructure.sql:/docker-entrypoint-initdb.d/001-dbstructure.sql:ro
+      - test-db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${SYSPASS_DB_ROOT_PASSWORD:-local-root-password}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - syspass
+
+networks:
+  syspass:
+    internal: true
+  web:
+
+volumes:
+  legacy-db:
+  legacy-vendor:
+  legacy-config:
+  legacy-backup:
+  legacy-cache:
+  legacy-resources:
+  legacy-temp:
+  test-db:
+  test-git:
+  test-vendor:

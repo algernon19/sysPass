@@ -38,7 +38,7 @@ interface AppInfoInterface
     const APP_WEBSITE_URL = 'https://www.syspass.org';
     const APP_BLOG_URL = 'https://www.cygnux.org';
     const APP_DOC_URL = 'https://doc.syspass.org';
-    const APP_UPDATES_URL = 'https://api.github.com/repos/nuxsmin/sysPass/releases/latest';
-    const APP_NOTICES_URL = 'https://api.github.com/repos/nuxsmin/sysPass/issues?milestone=none&state=open&labels=Notices';
-    const APP_ISSUES_URL = 'https://github.com/nuxsmin/sysPass/issues';
+    const APP_UPDATES_URL = 'https://api.github.com/repos/algernon19/sysPass/releases/latest';
+    const APP_NOTICES_URL = 'https://api.github.com/repos/algernon19/sysPass/issues?milestone=none&state=open&labels=Notices';
+    const APP_ISSUES_URL = 'https://github.com/algernon19/sysPass/issues';
 }
