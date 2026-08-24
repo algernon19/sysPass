@@ -60,8 +60,19 @@ vendor/*
 doc/*
 build/*
 tests/_output/*
+tests/tmp/
+tests/res/cache/
+tests/res/config.xml
+tests/res/sysPass_db-*.sql
+tests/res/sysPass_app-*.tar.gz
+tests/res/sysPass_db-*.tar.gz
+tests/res/sysPass_app-*.tar.gz
+tests/res/sysPass_db-*.tar.gz
+tests/res/sysPass_app-*.tar.gz
+tests/res/sysPass_db-*.tar.gz
 
 .phpstorm.meta.php
 composer.phar
+.env
 
 !.blank
