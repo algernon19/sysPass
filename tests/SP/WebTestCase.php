@@ -24,10 +24,10 @@
 
 namespace SP\Tests;
 
-use Goutte\Client;
+use GuzzleHttp\Client;
+use Psr\Http\Message\ResponseInterface;
 use PHPUnit\Framework\TestCase;
 use stdClass;
-use Symfony\Component\BrowserKit\Response;
 
 /**
  * Class WebTestCase
@@ -40,41 +40,29 @@ abstract class WebTestCase extends TestCase
      * @param string $url
      * @param mixed  $content Unencoded JSON data
      *
-     * @return Client
+     * @return ResponseInterface
      */
     protected static function postJson(string $url, $content = '')
     {
-        $client = self::createClient();
-        $client->request('POST', $url, [], [], ['HTTP_CONTENT_TYPE' => 'application/json'], json_encode($content));
-
-        return $client;
+        return (new Client())->request('POST', $url, [
+            'body' => json_encode($content),
+            'headers' => ['Content-Type' => 'application/json'],
+            'http_errors' => false,
+        ]);
     }
 
     /**
-     * @param array $server
-     *
-     * @return Client
-     */
-    protected static function createClient(array $server = [])
-    {
-        return new Client($server);
-    }
-
-    /**
-     * @param Client $client
+     * @param ResponseInterface $response
      *
      * @param int    $httpCode
      *
      * @return stdClass
      */
-    protected static function checkAndProcessJsonResponse(Client $client, $httpCode = 200)
+    protected static function checkAndProcessJsonResponse(ResponseInterface $response, $httpCode = 200)
     {
-        /** @var Response $response */
-        $response = $client->getResponse();
+        self::assertEquals($httpCode, $response->getStatusCode());
+        self::assertEquals('application/json; charset=utf-8', $response->getHeaderLine('Content-Type'));
 
-        self::assertEquals($httpCode, $response->getStatus());
-        self::assertEquals('application/json; charset=utf-8', $response->getHeader('Content-Type'));
-
-        return json_decode($response->getContent());
+        return json_decode((string)$response->getBody());
     }
 }

@@ -59,7 +59,7 @@ class HtmlTest extends TestCase
         $this->assertEquals(0, preg_match('/["<>\']+/', Html::getSafeUrl($url)));
     }
 
-    private function urlProvider(): array
+    public function urlProvider(): array
     {
         return [
             ['https://foo.com/<script>alert("TEST");</script>'],

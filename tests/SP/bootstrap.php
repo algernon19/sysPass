@@ -94,7 +94,7 @@ if (!function_exists('\gettext')) {
  */
 function getRealIpAddress()
 {
-    return trim(shell_exec('ip a s eth0 | awk \'$1 == "inet" {print $2}\' | cut -d"/" -f1')) ?: '127.0.0.1';
+    return trim(shell_exec('hostname -i 2>/dev/null')) ?: '127.0.0.1';
 }
 
 /**
